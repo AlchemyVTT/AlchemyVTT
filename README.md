@@ -1,6 +1,6 @@
 ### Technologies
 
-|            |                                                  |                                                                  |
+| Project    | Website                                          | GitHub                                                           |
 | ---------- | ------------------------------------------------ | ---------------------------------------------------------------- |
 | Rapier     | [rapier.rs](https://rapier.rs)                   | [dimforge/rapier](https://github.com/dimforge/rapier)            |
 | Svelte     | [svelte.dev](https://svelte.dev)                 | [sveltejs/svelte](https://github.com/sveltejs/svelte)            |
