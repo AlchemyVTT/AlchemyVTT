@@ -5,8 +5,8 @@ export const JOIN_CAMPAIGN : string = '/join-campaign'
 
 import Home from './Home.svelte'
 import NewCampaign  from './NewCampaign.svelte'
-import OpenCampaign from "./OpenCampaign.svelte"
-import JoinCampaign from "./JoinCampaign.svelte"
+import OpenCampaign from './OpenCampaign.svelte'
+import JoinCampaign from './JoinCampaign.svelte'
 
 export function Routes() {
     const routes = { }
