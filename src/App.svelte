@@ -1,11 +1,40 @@
 <script lang='ts'>
-  import { SvelteUIProvider } from '@svelteuidev/core';
-  import { Routes } from './common/routes/Routes';
-  import Router from 'svelte-spa-router';
+  import { Button, SvelteUIProvider } from '@svelteuidev/core';
+  import { Version } from './script/util/Version'
 
-  const routes = Routes()
+  import { ms } from './script/util/Promise'
+
+  import { onMount } from 'svelte'
+
+  // console.log(Store.squash(['a', 'b', 'c'], 'd', ['e', ['f', 'g']]))
+
+
+  let fileInput
+
+  onMount(() => {
+
+    let p = ms(10000);
+    p.then(na => {
+      console.log('hello world2')
+    })
+    p.then(na => {
+      console.log('hello world3')
+    })
+
+
+
+    fileInput.onchange = async () => {
+    }
+  })
 </script>
 
-<SvelteUIProvider withGlobalStyles withNormalizeCSS themeObserver="dark">
-  <Router {routes}/>
+<svelte:head>
+  <title>
+    {`${Version.CURRENT}`}
+  </title>
+</svelte:head>
+
+<SvelteUIProvider withGlobalStyles withNormalizeCSS themeObserver='dark'>
+  <input type='file' style='display:none' bind:this={fileInput}/>
+  <Button on:click={()=>fileInput.click()}>Open a File!</Button>
 </SvelteUIProvider>
