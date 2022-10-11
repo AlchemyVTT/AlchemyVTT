@@ -8,6 +8,7 @@
 
     import * as TRYSTERO from 'trystero'
     import Token from "./Token";
+    import { Vector3 } from "three";
 
     let  _is_client : boolean = false
     let  _is_server : boolean = false
@@ -51,15 +52,10 @@
 
         // create and add surface in RAPIER
         const _r3d_surface_rigidbody_desc = RAPIER.RigidBodyDesc.fixed()
-        const _r3d_surface_collider_desc  = RAPIER.ColliderDesc.trimesh(
-            new Float32Array(_3js_surface_geometry.getAttribute('position').array),
-            new Uint32Array(_3js_surface_geometry.index.array)
-        ).setMassProperties(
-            1, 
-            new RAPIER.Vector3(0, 0, 0), 
-            new RAPIER.Vector3(0, 0, 0), 
-            new RAPIER.Quaternion(1, 0, 0, 0)
-        )        
+        const _r3d_surface_collider_desc  = RAPIER.ColliderDesc.convexHull(
+            new Float32Array(_3js_surface_geometry.getAttribute('position').array)
+            // new Uint32Array(_3js_surface_geometry.index.array)
+        )
         const _r3d_surface_rigidbody = _r3d_world.createRigidBody(_r3d_surface_rigidbody_desc                        )
         const _r3d_surface_collider  = _r3d_world.createCollider (_r3d_surface_collider_desc , _r3d_surface_rigidbody)
 
@@ -67,6 +63,14 @@
     })
 
     function update() {
+        
+
+        if(_dragging) {
+            _dragging._r3d_rigidbody.applyImpulse(
+                new RAPIER.Vector3(0, 1, 0),
+                true
+            )
+        }
 
         _r3d_world.step()
 
@@ -80,7 +84,7 @@
         requestAnimationFrame(update)
     }
 
-    let _dragging
+    let _dragging : Token
 
     function onMouseDown(event: MouseEvent) {
         const pickable = _3js_viewport.pick({
@@ -89,12 +93,17 @@
         }, _3js_camera)
         // JANK
         if(pickable) Object.values(_tokens).forEach((token : Token) => {
-            if(token._3js_mesh === pickable._viewable)
+            if(token._3js_mesh === pickable._viewable) {
+                // token._r3d_rigidbody.setBodyType(RAPIER.RigidBodyType.Dynamic)
                 _dragging = token
+            }
         })
     }
 
     function onMouseUp(event: MouseEvent) {
+        if(_dragging) {
+            // _dragging._r3d_rigidbody.setBodyType(RAPIER.RigidBodyType.Fixed  )
+        }
         _dragging = undefined
     }
 
@@ -117,6 +126,7 @@
     }
 
     let _room_id : string = 'hello'
+    let _peers   : object = { }
 
     function onHost() {
         _is_server = true
@@ -125,8 +135,13 @@
 
         const room = TRYSTERO.joinRoom({ appId: 'alchemyvtt' }, _room_id)
         const [sendHandshake, getHandshake] = room.makeAction('H')
+        _peers[TRYSTERO.selfId] = TRYSTERO.selfId
         room.onPeerJoin((peerId) => {
+            _peers[peerId] = peerId
             sendHandshake({ }, peerId)
+        })
+        room.onPeerLeave((peerId) => {
+            delete _peers[peerId]
         })
     }
 
@@ -136,9 +151,18 @@
         _is_client = true
         const room = TRYSTERO.joinRoom({ appId: 'alchemyvtt' }, _room_id)
         const [sendHandshake, getHandshake] = room.makeAction('H')
+        _peers[TRYSTERO.selfId] = TRYSTERO.selfId
+        room.onPeerJoin((peerId) => {
+            _peers[peerId] = peerId
+        })
+        room.onPeerLeave((peerId) => {
+            delete _peers[peerId]
+        })
         getHandshake((data, peerId) => {
-            if(!_server_peerId)
+            if(!_server_peerId) {
                 _server_peerId = peerId
+                spawn()
+            }
         })
     }
 
@@ -146,7 +170,7 @@
 </script>
 
 <div class='container'>
-    <Viewport bind:this={_3js_viewport} on:mousedown={onMouseDown}/>
+    <Viewport bind:this={_3js_viewport} on:mousedown={onMouseDown} on:mouseup={onMouseUp}/>
 
     {#if !_is_client && !_is_server}
     <div class='ui'>
@@ -155,7 +179,15 @@
         <input type='text'  bind:value={_room_id}/>
         <input type='button' value='Join' on:click={onJoin}/>
     </div>
-    {/if}
+    {:else}
+    <div class='ui'>
+        <ul>
+            {#each Object.values(_peers) as _peer}
+            <li>{`${_peer}`}</li>
+            {/each}
+        </ul>
+    </div>
+    {/if}    
 
 </div>
 

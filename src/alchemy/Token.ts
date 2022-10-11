@@ -26,22 +26,17 @@ export class Token {
             _3js_token_material
         )
 
-        this._r3d_rigidbody_desc = RAPIER.RigidBodyDesc.fixed()
-        this._r3d_collider_desc  = RAPIER.ColliderDesc.trimesh(
-            new Float32Array(_3js_token_geometry.getAttribute('position').array),
-            new Uint32Array (_3js_token_geometry.index.array)
-        ).setMassProperties(
-            1, 
-            new RAPIER.Vector3(0, -100, 0), 
-            new RAPIER.Vector3(0,    0, 0),
-            new RAPIER.Quaternion(1, 0, 0, 0)
+        this._r3d_rigidbody_desc = RAPIER.RigidBodyDesc.dynamic()
+        this._r3d_collider_desc  = RAPIER.ColliderDesc.convexHull(
+            new Float32Array(_3js_token_geometry.getAttribute('position').array)
+            // new Uint32Array (_3js_token_geometry.index.array)
         )
     }
 
     public spawn(_3js_viewport, _r3d_world : RAPIER.World) {
         _3js_viewport.add(true, this._3js_mesh)
-        this._r3d_rigidbody = _r3d_world.createRigidBody(this._r3d_rigidbody_desc)
-        this._r3d_collider  = _r3d_world.createCollider (this._r3d_collider_desc )
+        this._r3d_rigidbody = _r3d_world.createRigidBody(this._r3d_rigidbody_desc                     )
+        this._r3d_collider  = _r3d_world.createCollider (this._r3d_collider_desc , this._r3d_rigidbody)
     }
 
     public update() {
