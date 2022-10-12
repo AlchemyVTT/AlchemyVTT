@@ -16,7 +16,9 @@
 
     let _r3d_world: RAPIER.World
 
-    let _session
+    let _session: Session
+    let _clients = [ ]
+    let _magic: string = 'aaa-bbb-ccc'
 
     onMount(async () => {
         
@@ -58,29 +60,43 @@
         const _r3d_surface_rigidbody = _r3d_world.createRigidBody(_r3d_surface_rigidbody_desc                        )
         const _r3d_surface_collider  = _r3d_world.createCollider (_r3d_surface_collider_desc , _r3d_surface_rigidbody)
 
-        update()
+        _update()
     })
 
-    function update() {
-        
+    function _host() {
+        _session = Session.host(_magic)
+        _session.on('client-connected', ({peer}) => {
+            _clients = [..._clients, peer]
+        })
+        spawn()
+    }
 
-        if(_dragging) {
-            _dragging._r3d_rigidbody.applyImpulse(
-                new RAPIER.Vector3(0, 1, 0),
-                true
-            )
-        }
+    function _join() {
+        _session = Session.join(_magic)
+        // receive a network event
+        _session.rx('spawn', ({peer}) => {
+            // check if this is from the server
+            spawn()
+        })
+    }
 
+    let _tokens : object = { }
+
+    function _update() {
+        // update r3d
         _r3d_world.step()
 
+        // map r3d to 3js
         Object.values(_tokens).forEach(token => {
             token.update()
         })
 
-        _3js_orbit.update()
+        // update 3js
+        _3js_orbit   .update(           )
         _3js_viewport.render(_3js_camera)
 
-        requestAnimationFrame(update)
+        // next frame
+        requestAnimationFrame(_update)
     }
 
     let _dragging : Token
@@ -94,10 +110,7 @@
         if(pickable) Object.values(_tokens).forEach((token : Token) => {
             if(token._3js_mesh === pickable._viewable) {
                 if(!token._owner) {
-                    if()
-                        onRequestOwnership({ tokenId: token._uuid }, TRYSTERO.selfId)
-                    if(_is_client)
-                        requestOwnership({ tokenId: token._uuid })
+
                 }
             }
         })
@@ -111,9 +124,8 @@
         _dragging = undefined
     }
 
-    
-    let _tokens : object = { }
 
+    
     function spawn() {
         // spawn tokens
         for(let i = 0; i < 8; i ++)
@@ -128,78 +140,28 @@
             token.spawn(_3js_viewport, _r3d_world)
         }
     }
-
-    let _room_id : string = 'hello'
-    let _peers   : object = { }
-
-    let requestOwnership
-    let receiveOwnership
-    let releaseOwnership
-
-    function onHost() {
-        _session = Session.host(_room_id)
-        // spawn tokens
-        spawn()
-    }
-
-    let _server_peerId : string
-
-    function onJoin() {
-        _session = Session.join(_room_id)
-
-        // we need to wait until we receive the state of the map
-        _session.on('spawn', () => {
-            spawn()
-        })
-    }
-
-    function onRequestOwnership(request, peerId) {
-        if(_is_server && !_tokens[request.tokenId]._owner) {
-            _tokens[request.tokenId]._owner = peerId
-            receiveOwnership({ peerId: peerId, tokenId: request.tokenId })
-        }
-    }
-
-    function onReceiveOwnership(receive, peerId) {
-        if(_is_client && peerId == _server_peerId) {
-            _tokens[receive.tokenId]._owner = receive.peerId
-        }
-    }
-
-    function onReleaseOwnership(release, peerId) {
-        if(_is_server && _tokens[release.tokenId]._owner === peerId) {
-            _tokens[release.tokenId]._owner = undefined
-            receiveOwnership({ peerId: undefined, tokenId: release.tokenId })
-        }
-    }
-
-    // https://en.wikipedia.org/wiki/Platonic_solid#Cartesian_coordinates
 </script>
 
 <div class='container'>
     <Viewport bind:this={_3js_viewport} on:mousedown={onMouseDown} on:mouseup={onMouseUp}/>
 
-    {#if !_is_client && !_is_server}
     <div class='ui'>
-        <input type='button' value='Host' on:click={onHost}/>
-    
-        <input type='text'  bind:value={_room_id}/>
-        <input type='button' value='Join' on:click={onJoin}/>
-    </div>
-    {:else}
-    <div class='ui'>
+        {#if !_session}
+        <input type='button' value='Host' on:click={_host}/>
+        <input type= 'text'  bind:value={_magic}/>
+        <input type='button' value='Join' on:click={_join}/>
+        {:else}
+        <p>{_session._is    }</p>
+        <p>{_session.magic()}</p>
         <ul>
-            {#each Object.values(_peers) as _peer}
-            <li>{`${_peer}`}</li>
+            {#each Object.values(_clients) as _client}
+            <li>{`${_client}`}</li>
             {/each}
         </ul>
+        {/if}
     </div>
-    {/if}    
 
 </div>
-
-
-
 
 <style>
     .container {
@@ -211,6 +173,10 @@
         top: 0px;
         left: 0px;
         z-index: 1;
+    }
+
+    p {
+        font-size: 32px;
     }
 
     input {

@@ -106,25 +106,21 @@ export class Session {
         return this._magic
     }
 
-    _rx(msg: Message, peerId: string) {
-        const req = msg.resId && this._pending.get(msg.resId)
+    _rx(event: MessageEvent) {
+        const req = event.resId && this._pending.get(event.resId)
         if(req) {
-            this._pending.delete(msg.resId)
-            req.res(msg)
+            this._pending.delete(event.resId)
+            req.res(event)
         }
-        if(this._mel.has(msg.type))
-            this._mel.get(msg.type)({
-                type : msg.type,
-                peer :   peerId,
-                data : msg.data,
-                reqId: msg.reqId,
-                resId: msg.resId
-            })
+        const mel = this._mel.get(event.type)
+        if(mel) mel(event)
+    }
+
+    _on(event: SessionEvent) {
+        const sel = this._sel.get(event.type)
+        if(sel) sel(event)
     }
 }
-
-
-
 
 export type Message = {
     type: string
@@ -134,7 +130,8 @@ export type Message = {
 }
 
 export type SessionEvent = {
-
+    type: string,
+    peer: string
 }
 
 export type MessageEvent = {
@@ -174,9 +171,8 @@ export namespace Session {
 
         session._rm = TRYSTERO.joinRoom({appId: APP_ID, password: pw}, id)
         const [tx, rx] = session._rm.makeAction<Message>('M')
-        rx((msg, peer) => session._rx(msg, peer))
+        rx((msg, peer) => session._rx({...msg, peer}))
         session._tx = tx
-        
 
         const
             K0 = new HASH.SHA1().hex(TRYSTERO.selfId + sc),
@@ -189,6 +185,7 @@ export namespace Session {
             session.message(K1, msg.peer, { }, msg.reqId)
 
             console.log(`Server [${msg.peer}] connected!`)
+            session._on({type: SERVER_CONNECTED, peer: msg.peer})
         })
 
         return session
@@ -205,7 +202,7 @@ export namespace Session {
 
         session._rm = TRYSTERO.joinRoom({appId: APP_ID, password: pw}, id)
         const [tx, rx] = session._rm.makeAction<Message>('M')
-        rx((msg, peer) => session._rx(msg, peer))
+        rx((msg, peer) => session._rx({...msg, peer}))
         session._tx = tx
 
         const selfId = TRYSTERO.selfId
@@ -220,6 +217,7 @@ export namespace Session {
             if(msg.type === K1) {
                 // client connected
                 console.log(`Client '${peerId}' connected!`)
+                session._on({type: CLIENT_CONNECTED, peer: peerId})
             }
         })
         session._rm.onPeerLeave(peerId => {
