@@ -35,7 +35,6 @@ export class Session {
 
     _clientId: string
     _serverId: string
-    _verified: Array<string>
     
     _pending: Map<string, PendingRequest>
     // session event listener
@@ -44,10 +43,9 @@ export class Session {
     _mel: Map<string, Event.Listener<MessageEvent>>
 
     constructor() {
-        this._verified = new Array()
-        this._pending  = new Map()
-        this._sel      = new Map()
-        this._mel      = new Map()
+        this._pending = new Map()
+        this._sel     = new Map()
+        this._mel     = new Map()
     }
 
     public async tx(type: string, peer:string, data?: any, reqId?: string, resId?: string): Promise<Message> {
@@ -114,10 +112,6 @@ export class Session {
             this._pending.delete(msg.resId)
             req.res(msg)
         }
-
-        // if unverified peer don't propogate
-        if(this._serverId && !this._verified.includes(peerId))
-            return
         if(this._mel.has(msg.type))
             this._mel.get(msg.type)({
                 type : msg.type,
@@ -154,7 +148,7 @@ export type MessageEvent = {
 export namespace Session {
     const CLIENT_CONNECTED: string = 'client-connected'
     const SERVER_CONNECTED: string = 'server-connected'
-    // inclue version major and minor so incompatible version cannot connect
+    // inclue version major and minor so incompatible versions cannot connect
     export const APP_ID: string = `alchemyvtt-${Version.MAJOR}-${Version.MINOR}`
 
     export function join(magic  : string): Session {
@@ -179,31 +173,22 @@ export namespace Session {
         session._magic = Magic.mend([id, pw, sc])
 
         session._rm = TRYSTERO.joinRoom({appId: APP_ID, password: pw}, id)
-        // session._verified.push(TRYSTERO.selfId)
-        session._clientId = TRYSTERO.selfId
-        // session._serverId =    TRYSTERO.selfId        
-
         const [tx, rx] = session._rm.makeAction<Message>('M')
-        session._tx = tx
         rx((msg, peer) => session._rx(msg, peer))
+        session._tx = tx
+        
 
         const
             K0 = new HASH.SHA1().hex(TRYSTERO.selfId + sc),
             K1 = new HASH.SHA1().hex(             K0 + sc);
         session.rx(K0, (msg) => {
             session.rx(K0, undefined)
-            // verified serverId
+            // server connected!
             session._serverId = msg.peer
-            session._verified.push(session._serverId)
+            session._clientId = TRYSTERO.selfId
             session.message(K1, msg.peer, { }, msg.reqId)
 
             console.log(`Server [${msg.peer}] connected!`)
-
-            session.rx(CLIENT_CONNECTED, (msg) => {
-                session._verified.push(...msg.data)
-                console.log(`Client [${msg.data}] connected!`)
-                // notify client connection
-            })
         })
 
         return session
@@ -219,30 +204,22 @@ export namespace Session {
         session._magic = Magic.mend([id, pw, sc])
 
         session._rm = TRYSTERO.joinRoom({appId: APP_ID, password: pw}, id)
-        // session._verified.push(TRYSTERO.selfId)
-        session._clientId = TRYSTERO.selfId
-        session._serverId = TRYSTERO.selfId
         const [tx, rx] = session._rm.makeAction<Message>('M')
-        session._tx = tx
         rx((msg, peer) => session._rx(msg, peer))
+        session._tx = tx
+
+        const selfId = TRYSTERO.selfId
+        session._clientId   =   selfId
+        session._serverId   =   selfId
 
         session._rm.onPeerJoin (async peerId => {
             const
                 K0 = new HASH.SHA1().hex(peerId + sc),
                 K1 = new HASH.SHA1().hex(    K0 + sc);
             const msg = await session.request(K0, peerId)
-
             if(msg.type === K1) {
-                console.log(`Client [${peerId}] connected!`)
-
-                if(session._verified.length > 0)
-                    session.message(CLIENT_CONNECTED, peerId, session._verified)
-                session._verified.forEach(clientId => {
-                    session.message(CLIENT_CONNECTED, clientId, [peerId])
-                })
-                session._verified.push(peerId)
-
-                // notify client connection
+                // client connected
+                console.log(`Client '${peerId}' connected!`)
             }
         })
         session._rm.onPeerLeave(peerId => {
