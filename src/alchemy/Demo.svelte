@@ -1,23 +1,22 @@
 <script lang='ts'>
     import { onMount } from "svelte";
 
+    import * as RAPIER from '@dimforge/rapier3d-compat'
     import * as THREE from 'three'
+
     import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-    import RAPIER from '@dimforge/rapier3d-compat'
+    
     import Viewport from "./Viewport.svelte";
-
-    import * as TRYSTERO from 'trystero'
-    import Token from "./Token";
-    import { Vector3 } from "three";
-
-    let  _is_client : boolean = false
-    let  _is_server : boolean = false
+    import Session from './Session'
+    import Token   from "./Token"
 
     let _3js_viewport : Viewport
     let _3js_camera : THREE.PerspectiveCamera
     let _3js_orbit : OrbitControls
 
-    let _r3d_world
+    let _r3d_world: RAPIER.World
+
+    let _session
 
     onMount(async () => {
         
@@ -94,14 +93,19 @@
         // JANK
         if(pickable) Object.values(_tokens).forEach((token : Token) => {
             if(token._3js_mesh === pickable._viewable) {
-                // token._r3d_rigidbody.setBodyType(RAPIER.RigidBodyType.Dynamic)
-                _dragging = token
+                if(!token._owner) {
+                    if()
+                        onRequestOwnership({ tokenId: token._uuid }, TRYSTERO.selfId)
+                    if(_is_client)
+                        requestOwnership({ tokenId: token._uuid })
+                }
             }
         })
     }
 
     function onMouseUp(event: MouseEvent) {
         if(_dragging) {
+            // notify server of ownership
             // _dragging._r3d_rigidbody.setBodyType(RAPIER.RigidBodyType.Fixed  )
         }
         _dragging = undefined
@@ -128,42 +132,45 @@
     let _room_id : string = 'hello'
     let _peers   : object = { }
 
+    let requestOwnership
+    let receiveOwnership
+    let releaseOwnership
+
     function onHost() {
-        _is_server = true
-
+        _session = Session.host(_room_id)
+        // spawn tokens
         spawn()
-
-        const room = TRYSTERO.joinRoom({ appId: 'alchemyvtt' }, _room_id)
-        const [sendHandshake, getHandshake] = room.makeAction('H')
-        _peers[TRYSTERO.selfId] = TRYSTERO.selfId
-        room.onPeerJoin((peerId) => {
-            _peers[peerId] = peerId
-            sendHandshake({ }, peerId)
-        })
-        room.onPeerLeave((peerId) => {
-            delete _peers[peerId]
-        })
     }
 
     let _server_peerId : string
 
     function onJoin() {
-        _is_client = true
-        const room = TRYSTERO.joinRoom({ appId: 'alchemyvtt' }, _room_id)
-        const [sendHandshake, getHandshake] = room.makeAction('H')
-        _peers[TRYSTERO.selfId] = TRYSTERO.selfId
-        room.onPeerJoin((peerId) => {
-            _peers[peerId] = peerId
+        _session = Session.join(_room_id)
+
+        // we need to wait until we receive the state of the map
+        _session.on('spawn', () => {
+            spawn()
         })
-        room.onPeerLeave((peerId) => {
-            delete _peers[peerId]
-        })
-        getHandshake((data, peerId) => {
-            if(!_server_peerId) {
-                _server_peerId = peerId
-                spawn()
-            }
-        })
+    }
+
+    function onRequestOwnership(request, peerId) {
+        if(_is_server && !_tokens[request.tokenId]._owner) {
+            _tokens[request.tokenId]._owner = peerId
+            receiveOwnership({ peerId: peerId, tokenId: request.tokenId })
+        }
+    }
+
+    function onReceiveOwnership(receive, peerId) {
+        if(_is_client && peerId == _server_peerId) {
+            _tokens[receive.tokenId]._owner = receive.peerId
+        }
+    }
+
+    function onReleaseOwnership(release, peerId) {
+        if(_is_server && _tokens[release.tokenId]._owner === peerId) {
+            _tokens[release.tokenId]._owner = undefined
+            receiveOwnership({ peerId: undefined, tokenId: release.tokenId })
+        }
     }
 
     // https://en.wikipedia.org/wiki/Platonic_solid#Cartesian_coordinates

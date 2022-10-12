@@ -5,6 +5,8 @@ import * as THREE  from 'three'
 export class Token {
     _uuid : string
 
+    _owner : string
+
     _r3d_rigidbody : RAPIER.RigidBody
     _r3d_collider  : RAPIER.Collider
 
@@ -26,7 +28,7 @@ export class Token {
             _3js_token_material
         )
 
-        this._r3d_rigidbody_desc = RAPIER.RigidBodyDesc.dynamic()
+        this._r3d_rigidbody_desc = RAPIER.RigidBodyDesc.fixed()
         this._r3d_collider_desc  = RAPIER.ColliderDesc.convexHull(
             new Float32Array(_3js_token_geometry.getAttribute('position').array)
             // new Uint32Array (_3js_token_geometry.index.array)
