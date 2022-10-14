@@ -290,7 +290,7 @@
             }
         })
         
-        if(delta.length > 1)
+        if(delta.length > 0)
             if(_session.isServer()) {
                 _clients.forEach(clientId => {
                     _session.message('delta', clientId, delta)
