@@ -6,6 +6,7 @@ import * as UUID     from 'uuid'
 import * as Version from './Version'
 import * as Magic   from './Magic'
 import type Event   from './Event'
+import { reject } from 'lodash'
 
 // : CLIENT | SERVER
 export type  CLIENT = 'client'
@@ -106,6 +107,7 @@ export class Session {
         return this._magic
     }
 
+    // handle network messages
     _rx(event: MessageEvent) {
         const req = event.resId && this._pending.get(event.resId)
         if(req) {
@@ -116,6 +118,7 @@ export class Session {
         if(mel) mel(event)
     }
 
+    // handle local events like client connection
     _on(event: SessionEvent) {
         const sel = this._sel.get(event.type)
         if(sel) sel(event)
@@ -145,6 +148,8 @@ export type MessageEvent = {
 export namespace Session {
     const CLIENT_CONNECTED: string = 'client-connected'
     const SERVER_CONNECTED: string = 'server-connected'
+    const CLIENT_DISCONNECTED: string = 'client-disconnected'
+    const SERVER_DISCONNECTED: string = 'server-disconnected'
     // inclue version major and minor so incompatible versions cannot connect
     export const APP_ID: string = `alchemyvtt-${Version.MAJOR}-${Version.MINOR}`
 
@@ -188,6 +193,25 @@ export namespace Session {
             session._on({type: SERVER_CONNECTED, peer: msg.peer})
         })
 
+        session._rm.onPeerLeave(peerId => {
+            if(session._serverId == peerId)
+                console.log(`Server '${peerId}' disconnected!`)
+            else
+                console.log(`Client '${peerId}' disconnected!`)
+            // reject pending requests
+            session._pending.forEach((req, reqId) => {
+                if(req.peer == peerId) {
+                    session._pending.delete(reqId)
+                    req.rej()
+                }
+            })
+
+            if(session._serverId == peerId)
+                session._on({type: SERVER_DISCONNECTED, peer: peerId})
+            else
+                session._on({type: CLIENT_DISCONNECTED, peer: peerId})
+        })
+
         return session
     }
 
@@ -221,7 +245,16 @@ export namespace Session {
             }
         })
         session._rm.onPeerLeave(peerId => {
-            
+            console.log(`Client '${peerId}' disconnected!`)
+            // reject pending requests
+            session._pending.forEach((req, reqId) => {
+                if(req.peer == peerId) {
+                    session._pending.delete(reqId)
+                    req.rej()
+                }
+            })
+                        
+            session._on({type: CLIENT_DISCONNECTED, peer: peerId})
         })
 
         return session

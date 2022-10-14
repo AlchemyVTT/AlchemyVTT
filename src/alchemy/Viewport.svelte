@@ -126,7 +126,7 @@
     }
 </script>
 
-<canvas bind:this={_3js_canvas} on:mouseup on:mousedown/>
+<canvas bind:this={_3js_canvas} on:mouseup on:mousedown on:mousemove/>
 
 <style>
     canvas {
