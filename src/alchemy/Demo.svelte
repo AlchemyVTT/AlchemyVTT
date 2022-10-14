@@ -3,8 +3,9 @@
 
     import * as RAPIER from '@dimforge/rapier3d-compat'
     import * as THREE from 'three'
+    import * as Magic from './Magic'
 
-    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+    // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
     
     import Viewport from "./Viewport.svelte";
     import Session from './Session'
@@ -13,7 +14,7 @@
 
     let _3js_viewport : Viewport
     let _3js_camera : THREE.PerspectiveCamera
-    let _3js_orbit : OrbitControls
+    // let _3js_orbit : OrbitControls
     let _3js_surface_mesh: THREE.Mesh
     let _3js_raycaster: THREE.Raycaster    
     let _3js_pointer: THREE.Vector2
@@ -22,7 +23,11 @@
 
     let _session: Session
     let _clients = [ ]
-    let _magic: string = 'aaa-bbb-ccc'
+    let _magic: string = Magic.mend([
+        Magic.random(),
+        Magic.random(),
+        Magic.random()
+    ])
 
     onMount(async () => {
         
