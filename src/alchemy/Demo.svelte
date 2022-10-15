@@ -66,12 +66,10 @@
 
         // create and add surface in RAPIER
         const _r3d_surface_rigidbody_desc = RAPIER.RigidBodyDesc.fixed()
-        const _r3d_surface_collider_desc  = RAPIER.ColliderDesc.convexHull(
-            new Float32Array(_3js_surface_geometry.getAttribute('position').array)
-            // new Uint32Array(_3js_surface_geometry.index.array)
-        )
+        const _r3d_surface_collider_desc  = new RAPIER.ColliderDesc(new RAPIER.HalfSpace(new RAPIER.Vector3(0, 1, 0)));
         const _r3d_surface_rigidbody = _r3d_world.createRigidBody(_r3d_surface_rigidbody_desc                        )
         const _r3d_surface_collider  = _r3d_world.createCollider (_r3d_surface_collider_desc , _r3d_surface_rigidbody)
+        _r3d_surface_rigidbody.setTranslation(new RAPIER.Vector3(0, .5, 0), true)
 
         _3js_raycaster = new THREE.Raycaster()
         _3js_pointer = new THREE.Vector2()
@@ -215,8 +213,13 @@
         }
     }
 
+    const _COLLIDE : number = 0b11111111_11111111_11111111_11111111
+    const _NOCOLLIDE: number = 0
+
     function _set_ownership(tokenId, ownerId) {
         const token: Token = _tokens[tokenId]
+
+        // console.log(token._r3d_collider.collisionGroups().toString(2))
 
         if(token && token._ownerId !== ownerId) {
             token._ownerId = ownerId
@@ -224,15 +227,16 @@
             if(ownerId) {
                 if(ownerId === _session._clientId) {
                     token._r3d_rigidbody.setBodyType(RAPIER.RigidBodyType.Dynamic)
+                    token._r3d_collider.setCollisionGroups(_COLLIDE)
                     //token._r3d_collider.setSensor(false)
 
                 } else {
                     token._r3d_rigidbody.setBodyType(RAPIER.RigidBodyType.Fixed  )
-                    //token._r3d_collider.setSensor(true )
+                    token._r3d_collider.setCollisionGroups(_NOCOLLIDE)
                 }
             } else {
                 token._r3d_rigidbody.setBodyType(RAPIER.RigidBodyType.Fixed)
-                //token._r3d_collider.setSensor(false)
+                token._r3d_collider.setCollisionGroups(_COLLIDE)
             }
 
             console.log(`Token '${token._tokenId}'' is now owned by Client '${token._ownerId}'`)
