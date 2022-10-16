@@ -11,6 +11,7 @@
     import Session from './Session'
     import Token   from "./Token"
     import { filter, reject } from "lodash";
+    import { HalfSpace } from "@dimforge/rapier3d-compat";
 
     let _3js_viewport : Viewport
     let _3js_camera : THREE.PerspectiveCamera
@@ -66,7 +67,7 @@
 
         // create and add surface in RAPIER
         const _r3d_surface_rigidbody_desc = RAPIER.RigidBodyDesc.fixed()
-        const _r3d_surface_collider_desc  = new RAPIER.ColliderDesc(new RAPIER.HalfSpace(new RAPIER.Vector3(0, 1, 0)));
+        const _r3d_surface_collider_desc  = new RAPIER.ColliderDesc(new HalfSpace(new RAPIER.Vector3(0, 1, 0)));
         const _r3d_surface_rigidbody = _r3d_world.createRigidBody(_r3d_surface_rigidbody_desc                        )
         const _r3d_surface_collider  = _r3d_world.createCollider (_r3d_surface_collider_desc , _r3d_surface_rigidbody)
         _r3d_surface_rigidbody.setTranslation(new RAPIER.Vector3(0, .5, 0), true)
@@ -429,6 +430,10 @@
 
     input {
         font-size: 32px;
+    }
+
+    input[type='button'] {
+        background-color:#888;
     }
 </style>
 

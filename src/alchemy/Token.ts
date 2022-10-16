@@ -2,21 +2,6 @@ import * as RAPIER from '@dimforge/rapier3d-compat'
 import * as THREE  from 'three'
 // import * as UUID   from 'uuid'
 
-
-
-// initial state
-// update  state
-// owner   state
-
-// initial state has
-// ids
-// all properties
-// all assets (don't worry about this right now)
-
-// when we talk across the network we should be talking only at the level of tokenIds
-
-// we don't need to serialize 
-
 export class Token {
     _tokenId: string
     _ownerId: string
@@ -60,8 +45,6 @@ export class Token {
         this._r3d_collider  = _r3d_world.createCollider (this._r3d_collider_desc , this._r3d_rigidbody)
         if(t) this._r3d_rigidbody.setTranslation(t, true);
         if(q) this._r3d_rigidbody.setRotation(q, true);
-        if(this._ownerId)
-            this._r3d_collider.setSensor(true)
     }
 
     public update() {
